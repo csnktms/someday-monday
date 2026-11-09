@@ -164,11 +164,27 @@
 
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
-    document.getElementById('signup-form').addEventListener('submit', function (e) {
+    document.getElementById('signup-form').addEventListener('submit', async function (e) {
       e.preventDefault();
       var email = document.getElementById('email');
-      document.getElementById('note').textContent = "Thanks! We'll let you know at " + email.value + " when we launch.";
-      email.value = '';
+      var note = document.getElementById('note');
+      var button = this.querySelector('button');
+      button.disabled = true;
+      try {
+        var res = await fetch('api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.value })
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+        note.textContent = "Thanks! You're signup #" + data.count + ". We'll let you know at " + email.value + " when we launch.";
+        email.value = '';
+      } catch (err) {
+        note.textContent = err.message || 'Something went wrong. Please try again.';
+      } finally {
+        button.disabled = false;
+      }
     });
   </script>
 </body>
