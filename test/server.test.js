@@ -2,18 +2,31 @@
 
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { createServer } = require('../server');
 
 let server;
 let base;
+let staticDir;
 
 before(async () => {
-  server = createServer();
+  // Stand-in for the Vite build output so these tests don't need a build.
+  staticDir = fs.mkdtempSync(path.join(os.tmpdir(), 'someday-monday-'));
+  fs.mkdirSync(path.join(staticDir, 'assets'));
+  fs.writeFileSync(path.join(staticDir, 'index.html'), '<!DOCTYPE html><div id="root"></div>');
+  fs.writeFileSync(path.join(staticDir, 'assets', 'app-abc123.js'), 'console.log(1)');
+
+  server = createServer({ staticDir });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   base = `http://127.0.0.1:${server.address().port}`;
 });
 
-after(() => new Promise((resolve) => server.close(resolve)));
+after(async () => {
+  await new Promise((resolve) => server.close(resolve));
+  fs.rmSync(staticDir, { recursive: true, force: true });
+});
 
 const postSignup = (body) =>
   fetch(`${base}/api/signup`, {
@@ -26,7 +39,20 @@ test('serves the landing page at /', async () => {
   const res = await fetch(`${base}/`);
   assert.equal(res.status, 200);
   assert.match(res.headers.get('content-type'), /text\/html/);
-  assert.match(await res.text(), /Someday<span>Monday<\/span>/);
+  assert.match(await res.text(), /<div id="root">/);
+});
+
+test('serves built assets with long-lived caching', async () => {
+  const res = await fetch(`${base}/assets/app-abc123.js`);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /javascript/);
+  assert.match(res.headers.get('cache-control'), /immutable/);
+});
+
+test('unknown API routes return JSON 404', async () => {
+  const res = await fetch(`${base}/api/nope`);
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { error: 'Not found' });
 });
 
 test('health check returns ok', async () => {

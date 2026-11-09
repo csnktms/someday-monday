@@ -1,16 +1,19 @@
 'use strict';
 
-// Small, dependency-free Node.js app that serves the Someday Monday landing page.
-// - Static files from ./public
+// Small Node.js server for Someday Monday.
+// - Serves the built React app from ./dist (run `npm run build` first)
 // - POST /api/signup  { "email": "..." }  -> stores the email in memory (demo only)
 // - GET  /api/signups                      -> count of signups so far
 // - GET  /healthz                          -> "ok"
+//
+// The API is also exported as connect-style middleware so the Vite dev server
+// can mount it (see vite.config.mjs), giving one `npm run dev` command.
 
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const PUBLIC_DIR = path.join(__dirname, 'public');
+const DIST_DIR = path.join(__dirname, 'dist');
 const MAX_BODY_BYTES = 1024;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -23,6 +26,7 @@ const MIME_TYPES = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
 };
 
 function sendJson(res, status, body) {
@@ -50,37 +54,14 @@ function readBody(req) {
   });
 }
 
-function serveStatic(req, res) {
-  let urlPath;
-  try {
-    urlPath = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
-  } catch {
-    res.writeHead(400);
-    return res.end('Bad request');
-  }
-  if (urlPath.endsWith('/')) urlPath += 'index.html';
-
-  const filePath = path.join(PUBLIC_DIR, path.normalize(urlPath));
-  if (!filePath.startsWith(PUBLIC_DIR + path.sep)) {
-    res.writeHead(403);
-    return res.end('Forbidden');
-  }
-
-  fs.readFile(filePath, (err, data) => {
-    if (err) {
-      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-      return res.end('Not found');
-    }
-    const type = MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': type });
-    res.end(req.method === 'HEAD' ? undefined : data);
-  });
-}
-
-function createServer() {
+/**
+ * Connect-style middleware for the API routes. Calls next() for anything else.
+ * Each call creates its own in-memory signup store.
+ */
+function createApi() {
   const signups = new Set();
 
-  return http.createServer(async (req, res) => {
+  return async function api(req, res, next) {
     const { pathname } = new URL(req.url, 'http://localhost');
 
     if (pathname === '/healthz') {
@@ -106,14 +87,63 @@ function createServer() {
       return sendJson(res, 200, { count: signups.size });
     }
 
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      return sendJson(res, 405, { error: 'Method not allowed' });
+    if (pathname.startsWith('/api/')) {
+      return sendJson(res, 404, { error: 'Not found' });
     }
-    return serveStatic(req, res);
+
+    return next();
+  };
+}
+
+function serveStatic(staticDir, req, res) {
+  let urlPath;
+  try {
+    urlPath = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+  } catch {
+    res.writeHead(400);
+    return res.end('Bad request');
+  }
+  if (urlPath.endsWith('/')) urlPath += 'index.html';
+
+  const filePath = path.join(staticDir, path.normalize(urlPath));
+  if (!filePath.startsWith(staticDir + path.sep)) {
+    res.writeHead(403);
+    return res.end('Forbidden');
+  }
+
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('Not found');
+    }
+    const type = MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
+    const headers = { 'Content-Type': type };
+    // Vite fingerprints files in /assets, so they can be cached forever.
+    if (urlPath.startsWith('/assets/')) headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+    res.writeHead(200, headers);
+    res.end(req.method === 'HEAD' ? undefined : data);
+  });
+}
+
+function createServer({ staticDir = DIST_DIR } = {}) {
+  const root = path.resolve(staticDir);
+  const api = createApi();
+
+  return http.createServer((req, res) => {
+    api(req, res, () => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        return sendJson(res, 405, { error: 'Method not allowed' });
+      }
+      return serveStatic(root, req, res);
+    });
   });
 }
 
 if (require.main === module) {
+  if (!fs.existsSync(path.join(DIST_DIR, 'index.html'))) {
+    console.error('No build found in ./dist. Run `npm run build` first (or use `npm run dev`).');
+    process.exit(1);
+  }
   const port = Number(process.env.PORT) || 3000;
   const host = process.env.HOST || '0.0.0.0';
   createServer().listen(port, host, () => {
@@ -121,4 +151,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer };
+module.exports = { createServer, createApi };
