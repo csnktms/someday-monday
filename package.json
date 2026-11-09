@@ -1,0 +1,15 @@
+{
+  "name": "someday-monday",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Landing page for Someday Monday, served by a tiny Node.js app.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
