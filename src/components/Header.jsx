@@ -1,6 +1,8 @@
 const links = [
   { href: '#features', label: 'Features' },
   { href: '#how', label: 'How it works' },
+  { href: '#try', label: 'Try it' },
+  { href: '#faq', label: 'FAQ' },
   { href: '#signup', label: 'Join' },
 ];
 
