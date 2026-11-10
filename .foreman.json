@@ -1,5 +1,5 @@
 {
   "preview": {
-    "command": "node server.js"
+    "command": "npm run dev -- --host 0.0.0.0 --port $PORT --strictPort"
   }
 }
