@@ -1,3 +1,5 @@
+import ThemeToggle from './ThemeToggle.jsx';
+
 const links = [
   { href: '#features', label: 'Features' },
   { href: '#how', label: 'How it works' },
@@ -13,13 +15,16 @@ export default function Header() {
         <a className="logo" href="#">
           Someday<span>Monday</span>
         </a>
-        <ul>
-          {links.map((link) => (
-            <li key={link.href}>
-              <a href={link.href}>{link.label}</a>
-            </li>
-          ))}
-        </ul>
+        <div className="nav-right">
+          <ul>
+            {links.map((link) => (
+              <li key={link.href}>
+                <a href={link.href}>{link.label}</a>
+              </li>
+            ))}
+          </ul>
+          <ThemeToggle />
+        </div>
       </nav>
     </header>
   );

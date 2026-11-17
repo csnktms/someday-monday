@@ -30,5 +30,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{js,jsx}'],
+    // React's production build has no act(), which Testing Library needs, so
+    // don't let NODE_ENV=production from the shell or CI leak into tests.
+    env: { NODE_ENV: 'test' },
   },
 });

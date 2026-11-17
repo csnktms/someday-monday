@@ -2,8 +2,11 @@
 
 // Small Node.js server for Someday Monday.
 // - Serves the built React app from ./dist (run `npm run build` first)
-// - POST /api/signup  { "email": "..." }  -> stores the email in memory (demo only)
+// - POST /api/signup  { "email": "...", "ref"?: "<code>" }
+//                                          -> stores the email in memory (demo only) and
+//                                             returns its referral code and spot in line
 // - GET  /api/signups                      -> count of signups so far
+// - GET  /api/referral/<code>              -> referral stats for one signup
 // - GET  /healthz                          -> "ok"
 //
 // The API is also exported as connect-style middleware so the Vite dev server
@@ -12,6 +15,7 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 const DIST_DIR = path.join(__dirname, 'dist');
 const MAX_BODY_BYTES = 1024;
@@ -54,12 +58,35 @@ function readBody(req) {
   });
 }
 
+const CODE_RE = /^[A-Za-z0-9_-]{1,32}$/;
+
+/**
+ * Each signup has a place in line (1 = first) and a referral code. Every friend
+ * who signs up with that code moves it up one spot, but never above #1.
+ */
+function referralStats(entry) {
+  return {
+    code: entry.code,
+    position: entry.position,
+    referrals: entry.referrals,
+    spot: Math.max(1, entry.position - entry.referrals),
+  };
+}
+
 /**
  * Connect-style middleware for the API routes. Calls next() for anything else.
  * Each call creates its own in-memory signup store.
  */
 function createApi() {
-  const signups = new Set();
+  const byEmail = new Map(); // email -> { code, position, referrals }
+  const byCode = new Map(); // code -> the same entry
+
+  function newCode() {
+    let code;
+    do code = crypto.randomBytes(6).toString('base64url');
+    while (byCode.has(code));
+    return code;
+  }
 
   return async function api(req, res, next) {
     const { pathname } = new URL(req.url, 'http://localhost');
@@ -72,19 +99,36 @@ function createApi() {
     if (pathname === '/api/signup') {
       if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
       try {
-        const { email } = JSON.parse((await readBody(req)) || '{}');
+        const { email, ref } = JSON.parse((await readBody(req)) || '{}');
         if (typeof email !== 'string' || !EMAIL_RE.test(email.trim())) {
           return sendJson(res, 400, { error: 'Please enter a valid email address.' });
         }
-        signups.add(email.trim().toLowerCase());
-        return sendJson(res, 201, { ok: true, count: signups.size });
+        const key = email.trim().toLowerCase();
+        let entry = byEmail.get(key);
+        if (!entry) {
+          entry = { code: newCode(), position: byEmail.size + 1, referrals: 0 };
+          byEmail.set(key, entry);
+          byCode.set(entry.code, entry);
+          // Only brand-new signups count as referrals.
+          const referrer = typeof ref === 'string' ? byCode.get(ref) : undefined;
+          if (referrer && referrer !== entry) referrer.referrals += 1;
+        }
+        return sendJson(res, 201, { ok: true, count: byEmail.size, ...referralStats(entry) });
       } catch (err) {
         return sendJson(res, err.status || 400, { error: err.status ? err.message : 'Invalid JSON' });
       }
     }
 
     if (pathname === '/api/signups') {
-      return sendJson(res, 200, { count: signups.size });
+      return sendJson(res, 200, { count: byEmail.size });
+    }
+
+    if (pathname.startsWith('/api/referral/')) {
+      if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed' });
+      const code = pathname.slice('/api/referral/'.length);
+      const entry = CODE_RE.test(code) ? byCode.get(code) : undefined;
+      if (!entry) return sendJson(res, 404, { error: 'Unknown referral code' });
+      return sendJson(res, 200, referralStats(entry));
     }
 
     if (pathname.startsWith('/api/')) {
