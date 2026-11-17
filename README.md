@@ -19,10 +19,13 @@ npm test             # server tests (node:test) + React tests (Vitest)
 
 - `index.html` and `src/`: the React app
   - `src/App.jsx` puts the page together from `src/components/` (Header, Hero, SignupForm, Features, HowItWorks, Testimonial, Footer)
-  - `src/styles.css` holds the page styles
+  - `src/styles.css` holds the page styles. All colors are CSS variables at the top; `:root[data-theme='dark']` holds the dark-mode values.
+  - Dark mode: the 🌙/☀️ button in the header switches themes and remembers the choice (`localStorage` key `sm-theme`). Until someone clicks it, the page follows the device's light/dark setting.
+  - Referrals: after signing up, visitors get a personal link (`?ref=<code>`). Every friend who signs up through it moves them up one spot on the list.
 - `server.js` serves `dist/` and a small demo API:
-  - `POST /api/signup` with `{ "email": "you@example.com" }` records an early-access signup
+  - `POST /api/signup` with `{ "email": "you@example.com", "ref": "<optional code>" }` records an early-access signup and returns `{ ok, count, code, position, referrals, spot }`
   - `GET /api/signups` returns `{ "count": n }`
+  - `GET /api/referral/<code>` returns `{ code, position, referrals, spot }` (404 for unknown codes)
   - `GET /healthz` returns `ok`
 - `vite.config.mjs` mounts the same API into the Vite dev server, so `npm run dev` is all you need while developing.
 

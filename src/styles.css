@@ -11,10 +11,16 @@
   --hover: #e2e7f2;
   --chip-border: #c9d0e2;
   --on-ink-muted: #b9c0d8;
+  --on-accent: #ffffff;
+  --input-bg: #ffffff;
+  --quote-bg: #18203a;
+  --on-quote: #ffffff;
+  color-scheme: light;
   --radius: 14px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
+  transition: background-color .2s, color .2s;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--ink);
@@ -24,7 +30,8 @@ a { color: inherit; }
 .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
 
 header { padding: 24px 0; }
-nav { display: flex; align-items: center; justify-content: space-between; }
+nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.nav-right { display: flex; align-items: center; gap: 20px; }
 .logo { font-weight: 800; font-size: 1.25rem; text-decoration: none; }
 .logo span { color: var(--accent); }
 nav ul { list-style: none; display: flex; gap: 24px; }
@@ -44,12 +51,12 @@ nav ul a:hover { color: var(--ink); }
 .signup { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .signup input {
   padding: 14px 16px; border: 2px solid var(--border); border-radius: var(--radius);
-  font-size: 1rem; min-width: 260px; background: #fff;
+  font-size: 1rem; min-width: 260px; background: var(--input-bg); color: var(--ink);
 }
 .signup input:focus { outline: none; border-color: var(--accent); }
 .btn {
   padding: 14px 24px; border: 0; border-radius: var(--radius); cursor: pointer;
-  background: var(--accent); color: #fff; font-weight: 700; font-size: 1rem;
+  background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 1rem;
 }
 .btn:hover { background: var(--accent-dark); }
 .note { margin-top: 12px; font-size: .9rem; color: var(--muted); min-height: 1.4em; }
@@ -71,11 +78,11 @@ section h2 { text-align: center; font-size: 2rem; margin-bottom: 40px; letter-sp
 .step::before {
   counter-increment: step; content: counter(step);
   flex: none; width: 36px; height: 36px; border-radius: 50%;
-  background: var(--ink); color: #fff; display: grid; place-items: center; font-weight: 700;
+  background: var(--quote-bg); color: var(--on-quote); display: grid; place-items: center; font-weight: 700;
 }
 .step p { color: var(--muted); }
 
-.quote { background: var(--ink); color: #fff; text-align: center; border-radius: var(--radius); padding: 56px 32px; }
+.quote { background: var(--quote-bg); color: var(--on-quote); text-align: center; border-radius: var(--radius); padding: 56px 32px; }
 .quote blockquote { font-size: 1.4rem; max-width: 640px; margin: 0 auto 16px; }
 .quote cite { color: var(--on-ink-muted); font-style: normal; }
 
@@ -94,7 +101,7 @@ section h2 { text-align: center; font-size: 2rem; margin-bottom: 40px; letter-sp
 .add-form { display: flex; gap: 8px; }
 .add-form input {
   flex: 1; min-width: 0; padding: 10px 12px; border: 2px solid var(--border);
-  border-radius: 10px; font-size: 1rem;
+  border-radius: 10px; font-size: 1rem; background: var(--input-bg); color: var(--ink);
 }
 .add-form input:focus { outline: none; border-color: var(--accent); }
 .btn-small { padding: 10px 16px; }
@@ -144,8 +151,64 @@ section h2 { text-align: center; font-size: 2rem; margin-bottom: 40px; letter-sp
 
 footer { padding: 40px 0; text-align: center; color: var(--muted); font-size: .9rem; }
 
+
+/* Dark mode: same variables, darker values. Set on <html data-theme="dark">. */
+:root[data-theme='dark'] {
+  --bg: #0f1424;
+  --ink: #e6e9f5;
+  --muted: #a3abc6;
+  --accent: #8b8bf5;
+  --accent-dark: #b3b3ff;
+  --accent-soft: #2a2d5c;
+  --card: #182038;
+  --border: #2c3554;
+  --section-alt: #131a2e;
+  --hover: #232c48;
+  --chip-border: #3a4466;
+  --on-ink-muted: #b9c0d8;
+  --on-accent: #0f1424;
+  --input-bg: #0f1424;
+  --quote-bg: #232c4a;
+  --on-quote: #f1f3fb;
+  color-scheme: dark;
+}
+:root[data-theme='dark'] .card,
+:root[data-theme='dark'] .panel { box-shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25); }
+
+.theme-toggle {
+  width: 40px; height: 40px; flex: none; display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: 50%; background: var(--card);
+  cursor: pointer; font-size: 1.1rem; line-height: 1;
+}
+.theme-toggle:hover { border-color: var(--accent); }
+.theme-toggle:focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Referral card shown after signing up */
+.referral {
+  max-width: 560px; margin: 20px auto 0; padding: 20px 22px; text-align: left;
+  background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+}
+/* .hero p styles would otherwise apply inside the card. */
+.referral p { margin: 0; max-width: none; font-size: 1rem; color: var(--ink); }
+.referral .referral-title { font-size: 1.15rem; }
+.referral-title strong { color: var(--accent-dark); }
+.referral .referral-sub { color: var(--muted); font-size: .95rem; margin: 4px 0 14px; }
+.referral-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.referral-link {
+  flex: 1; min-width: 0; padding: 10px 12px; border: 2px solid var(--border); border-radius: 10px;
+  font-size: .95rem; background: var(--input-bg); color: var(--ink);
+}
+.referral-link:focus { outline: none; border-color: var(--accent); }
+.btn-ghost { background: none; color: var(--accent-dark); box-shadow: inset 0 0 0 2px var(--accent); }
+.btn-ghost:hover { background: var(--accent-soft); }
+.referral .referral-copied:empty { display: none; }
+.referral .referral-copied { margin-top: 8px; font-size: .9rem; color: var(--muted); }
+
 @media (max-width: 600px) {
   nav ul { display: none; }
   .signup input { min-width: 0; width: 100%; }
   .signup .btn { width: 100%; }
+  .referral-row .btn { flex: 1; }
+  .referral-link { flex-basis: 100%; }
 }

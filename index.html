@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Someday Monday — Turn "someday" into a day</title>
   <meta name="description" content="Someday Monday turns the things you keep meaning to do into a gentle weekly plan.">
+  <script>
+    // Apply the saved or device theme before the page paints (avoids a light flash).
+    (function () {
+      var t;
+      try { t = localStorage.getItem("sm-theme"); } catch (e) {}
+      if (t !== "light" && t !== "dark") {
+        t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
 </head>
 <body>
   <div id="root"></div>
